@@ -1,74 +1,143 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { View, Button, Alert, TouchableOpacity, Vibration, Text } from "react-native";
+import MapView, { Marker, Polyline } from "react-native-maps";
+import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
+import { MaterialIcons } from "@expo/vector-icons";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+type Coordinate = {
+  latitude: number;
+  longitude: number;
+};
 
-export default function HomeScreen() {
+export default function HomeScreen(): JSX.Element {
+  const [currentLocation, setCurrentLocation] = useState<Coordinate | null>(null);
+  const [destination, setDestination] = useState<Coordinate | null>(null);
+  const [distanceThreshold, setDistanceThreshold] = useState<number>(1000);
+  const [mapRegion, setMapRegion] = useState<any>(null);
+  const [tracking, setTracking] = useState<boolean>(false);
+  const [seconds, setSeconds] = useState<number>(0);
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Quyền truy cập bị từ chối", "Hãy cấp quyền truy cập vị trí để sử dụng ứng dụng");
+        return;
+      }
+      await fetchCurrentLocation();
+    })();
+  }, []);
+
+  const fetchCurrentLocation = async () => {
+    let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+    const newLocation = { latitude: location.coords.latitude, longitude: location.coords.longitude };
+    setCurrentLocation(newLocation);
+    setMapRegion({
+      latitude: newLocation.latitude,
+      longitude: newLocation.longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    });
+  };
+
+  useEffect(() => {
+    if (!tracking || !destination || !currentLocation) return;
+    const intervalTimer = setInterval(() => {
+      setSeconds((prev) => prev + 1);
+    }, 1000);
+
+    const interval = setInterval(async () => {
+      await fetchCurrentLocation();
+      if (!currentLocation) return;
+      let distance = getDistance(currentLocation.latitude, currentLocation.longitude, destination.latitude, destination.longitude);
+      if (distance <= distanceThreshold) {
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Thông báo vị trí",
+            body: `Bạn đã đến nơi! Thời gian di chuyển: ${seconds} giây`,
+            sound: true,
+          },
+          trigger: null,
+        });
+        Vibration.vibrate();
+        Alert.alert("Bạn đã đến nơi!", `Thời gian di chuyển: ${seconds} giây`);
+        setTracking(false);
+      }
+    }, 5000);
+    return () => {
+      clearInterval(intervalTimer);
+      clearInterval(interval);
+    }
+  }, [tracking, destination, distanceThreshold]);
+
+  function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    function toRad(value: number): number {
+      return (value * Math.PI) / 180;
+    }
+    let R = 6371000;
+    let dLat = toRad(lat2 - lat1);
+    let dLon = toRad(lon2 - lon1);
+    let a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={{ flex: 1 }}>
+      <MapView
+        style={{ flex: 1 }}
+        region={mapRegion}
+        onPress={(e) => {
+          setDestination(e.nativeEvent.coordinate);
+          Alert.alert("Điểm đến đã được cập nhật");
+        }}
+      >
+        {currentLocation && <Marker coordinate={currentLocation} title="Vị trí hiện tại" />}
+        {destination && <Marker coordinate={destination} title="Điểm đến" />}
+        {currentLocation && destination && (
+          <Polyline coordinates={[currentLocation, destination]} strokeWidth={3} strokeColor="blue" />
+        )}
+      </MapView>
+
+      {tracking && (
+        <Text style={{ position: "absolute", top: 50, left: "40%", fontSize: 20, fontWeight: "bold" }}>
+          {seconds} giây
+        </Text>
+      )}
+
+      <TouchableOpacity
+        style={{
+          position: "absolute",
+          right: 20,
+          bottom: 140,
+          backgroundColor: "white",
+          padding: 10,
+          borderRadius: 50,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 2,
+        }}
+        onPress={fetchCurrentLocation}
+      >
+        <MaterialIcons name="my-location" size={30} color="#666666" />
+      </TouchableOpacity>
+
+      {!tracking && (
+        <>
+          <Button title="Thông báo khi còn 500m" onPress={() => setDistanceThreshold(500)} />
+          <Button title="Thông báo khi còn 1km" onPress={() => setDistanceThreshold(1000)} />
+          <Button title="Bắt đầu theo dõi" onPress={() => setTracking(true)} />
+        </>
+      )}
+
+      {tracking && (
+        <Button title="Dừng theo dõi" onPress={() => setTracking(false)} />
+      )}
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
