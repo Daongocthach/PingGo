@@ -16,7 +16,12 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.pemeoh1.PingGo"
+      "package": "com.pemeoh1.PingGo",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAjmRa2_0iLvJ8ZrBldsDS9lOGbp-29REA"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

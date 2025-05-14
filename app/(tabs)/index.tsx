@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, Button, Alert, TouchableOpacity, Vibration, Text } from "react-native";
+import {
+  View,
+  Button,
+  Alert,
+  TouchableOpacity,
+  Vibration,
+  Text,
+} from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { MaterialIcons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 
 type Coordinate = {
   latitude: number;
@@ -11,18 +19,25 @@ type Coordinate = {
 };
 
 export default function HomeScreen(): JSX.Element {
-  const [currentLocation, setCurrentLocation] = useState<Coordinate | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<Coordinate | null>(
+    null
+  );
   const [destination, setDestination] = useState<Coordinate | null>(null);
   const [distanceThreshold, setDistanceThreshold] = useState<number>(1000);
   const [mapRegion, setMapRegion] = useState<any>(null);
   const [tracking, setTracking] = useState<boolean>(false);
   const [seconds, setSeconds] = useState<number>(0);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [alerting, setAlerting] = useState(false);
 
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Quyền truy cập bị từ chối", "Hãy cấp quyền truy cập vị trí để sử dụng ứng dụng");
+        Alert.alert(
+          "Quyền truy cập bị từ chối",
+          "Hãy cấp quyền truy cập vị trí để sử dụng ứng dụng"
+        );
         return;
       }
       await fetchCurrentLocation();
@@ -30,8 +45,13 @@ export default function HomeScreen(): JSX.Element {
   }, []);
 
   const fetchCurrentLocation = async () => {
-    let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-    const newLocation = { latitude: location.coords.latitude, longitude: location.coords.longitude };
+    let location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+    const newLocation = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
     setCurrentLocation(newLocation);
     setMapRegion({
       latitude: newLocation.latitude,
@@ -40,7 +60,15 @@ export default function HomeScreen(): JSX.Element {
       longitudeDelta: 0.01,
     });
   };
-
+  const stopAlert = async () => {
+    Vibration.cancel();
+    if (sound) {
+      await sound.stopAsync();
+      await sound.unloadAsync();
+      setSound(null);
+    }
+    setAlerting(false);
+  };
   useEffect(() => {
     if (!tracking || !destination || !currentLocation) return;
     const intervalTimer = setInterval(() => {
@@ -50,28 +78,43 @@ export default function HomeScreen(): JSX.Element {
     const interval = setInterval(async () => {
       await fetchCurrentLocation();
       if (!currentLocation) return;
-      let distance = getDistance(currentLocation.latitude, currentLocation.longitude, destination.latitude, destination.longitude);
+      let distance = getDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        destination.latitude,
+        destination.longitude
+      );
       if (distance <= distanceThreshold) {
-        Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Thông báo vị trí",
-            body: `Bạn đã đến nơi! Thời gian di chuyển: ${seconds} giây`,
-            sound: true,
-          },
-          trigger: null,
-        });
-        Vibration.vibrate();
-        Alert.alert("Bạn đã đến nơi!", `Thời gian di chuyển: ${seconds} giây`);
+        setAlerting(true);
         setTracking(false);
+
+        // Rung trong 30 giây
+        Vibration.vibrate([500, 500], true);
+        setTimeout(() => {
+          stopAlert();
+        }, 30000);
+
+        // Phát âm thanh
+        const { sound } = await Audio.Sound.createAsync(
+          require("@/assets/alert.mp3"), // đổi thành file âm thanh của bạn
+          { shouldPlay: true, isLooping: true }
+        );
+        setSound(sound);
+        await sound.playAsync();
       }
     }, 5000);
     return () => {
       clearInterval(intervalTimer);
       clearInterval(interval);
-    }
+    };
   }, [tracking, destination, distanceThreshold]);
 
-  function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  function getDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number {
     function toRad(value: number): number {
       return (value * Math.PI) / 180;
     }
@@ -80,8 +123,10 @@ export default function HomeScreen(): JSX.Element {
     let dLon = toRad(lon2 - lon1);
     let a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
@@ -96,15 +141,29 @@ export default function HomeScreen(): JSX.Element {
           Alert.alert("Điểm đến đã được cập nhật");
         }}
       >
-        {currentLocation && <Marker coordinate={currentLocation} title="Vị trí hiện tại" />}
+        {currentLocation && (
+          <Marker coordinate={currentLocation} title="Vị trí hiện tại" />
+        )}
         {destination && <Marker coordinate={destination} title="Điểm đến" />}
         {currentLocation && destination && (
-          <Polyline coordinates={[currentLocation, destination]} strokeWidth={3} strokeColor="blue" />
+          <Polyline
+            coordinates={[currentLocation, destination]}
+            strokeWidth={3}
+            strokeColor="blue"
+          />
         )}
       </MapView>
 
       {tracking && (
-        <Text style={{ position: "absolute", top: 50, left: "40%", fontSize: 20, fontWeight: "bold" }}>
+        <Text
+          style={{
+            position: "absolute",
+            top: 50,
+            left: "40%",
+            fontSize: 20,
+            fontWeight: "bold",
+          }}
+        >
           {seconds} giây
         </Text>
       )}
@@ -129,14 +188,46 @@ export default function HomeScreen(): JSX.Element {
 
       {!tracking && (
         <>
-          <Button title="Thông báo khi còn 500m" onPress={() => setDistanceThreshold(500)} />
-          <Button title="Thông báo khi còn 1km" onPress={() => setDistanceThreshold(1000)} />
-          <Button title="Bắt đầu theo dõi" onPress={() => setTracking(true)} />
+          <Button
+            title="Thông báo khi còn 500m"
+            color={distanceThreshold === 500 ? "#1C86EE" : "#666666"}
+            onPress={() => setDistanceThreshold(500)}
+          />
+          <Button
+            title="Thông báo khi còn 1km"
+            color={distanceThreshold === 1000 ? "#1C86EE" : "#666666"}
+            onPress={() => setDistanceThreshold(1000)}
+          />
+          <Button
+            color={tracking ? "blue" : "#666666"}
+            title="Bắt đầu theo dõi"
+            onPress={() => setTracking(true)}
+          />
         </>
       )}
 
       {tracking && (
         <Button title="Dừng theo dõi" onPress={() => setTracking(false)} />
+      )}
+      {alerting && (
+        <TouchableOpacity
+          onPress={stopAlert}
+          style={{
+            position: "absolute",
+            bottom: 80,
+            left: 20,
+            right: 20,
+            padding: 15,
+            backgroundColor: "red",
+            borderRadius: 10,
+          }}
+        >
+          <Text
+            style={{ color: "white", textAlign: "center", fontWeight: "bold" }}
+          >
+            DỪNG CẢNH BÁO
+          </Text>
+        </TouchableOpacity>
       )}
     </View>
   );
