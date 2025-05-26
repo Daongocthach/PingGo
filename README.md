@@ -1,50 +1,50 @@
-# Welcome to your Expo app 👋
+# 📍 PingGo – Báo thức vị trí trên thiết bị di động
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+![image](https://github.com/user-attachments/assets/e97e9122-7517-4892-93b4-f52e8d036231)
 
-## Get started
+**PingGo** là một ứng dụng mobile đơn giản được viết bằng **React Native + Expo Router**, cho phép người dùng:
+- Theo dõi **vị trí hiện tại** của bản thân
+- Thiết lập một **địa điểm mục tiêu**
+- Nhận **thông báo hoặc âm thanh cảnh báo** khi đến gần địa điểm đó (Geo Alarm)
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 🚀 Tính năng chính
 
-2. Start the app
+- 📡 Theo dõi vị trí liên tục với `expo-location`
+- 📍 Đặt vị trí cần cảnh báo (thông qua bản đồ hoặc tọa độ)
+- 🔔 Gửi thông báo đẩy hoặc phát âm thanh khi gần đến vị trí
+- 🗺️ Giao diện bản đồ với `react-native-maps`
+- 🛠️ Viết bằng **Expo SDK 52**, **React Native 0.76.7**
 
-   ```bash
-    npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🧱 Công nghệ sử dụng
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+| Công nghệ | Mục đích |
+|----------|----------|
+| **React Native** | Giao diện di động cross-platform |
+| **Expo Router** | Điều hướng màn hình |
+| **expo-location** | Lấy vị trí hiện tại, theo dõi GPS |
+| **expo-notifications** | Gửi thông báo khi gần đến vị trí |
+| **react-native-maps** | Hiển thị bản đồ và chọn vị trí |
+| **expo-task-manager** | Chạy background task theo dõi vị trí |
+| **expo-av** | Phát âm thanh báo thức (nếu cần) |
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## 🖥️ Yêu cầu hệ thống
 
-When you're ready, run:
+- Node.js >= 18
+- Expo CLI (`npm install -g expo-cli`)
+- Thiết bị Android/iOS thực tế (do cần GPS)
+- Tài khoản Expo để debug trên thiết bị thật
 
+---
+
+## ⚙️ Hướng dẫn cài đặt & chạy ứng dụng
+
+### 1. Clone project
 ```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+git clone https://github.com/Daongocthach/pinggo.git
+cd pinggo
